@@ -14,15 +14,15 @@ use piston::event_loop::*;
 use piston::input::*;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{ GlGraphics, OpenGL };
-use std::f64::consts::PI;
 use std::collections::VecDeque;
 use rand::Rng;
 
-const SEGMENT_RADIUS: f64 = 5.0;        // [Pix]
-const APPLE_RADIUS: f64 = 5.0;          // [Pix]
-const UPDATE_TIME: f64 = 0.1;           // [S]
-const SPAWN_TIME: f64 = 5.0;            // [S]
-const SEGMENTS_PER_APPLE: usize = 3;    // [#]
+const SEGMENT_RADIUS: f64 = 5.0;            // [Pix]
+const APPLE_RADIUS: f64 = 5.0;              // [Pix]
+const UPDATE_TIME: f64 = 0.05;              // [S]
+const SPAWN_TIME: f64 = 5.0;                // [S]
+const SEGMENTS_PER_APPLE: usize = 10;       // [#]
+const TURN_ANGLE: f64 = 15.0;               // [Deg]
 
 struct Snake {
     dir: Vec2D,
@@ -49,7 +49,8 @@ pub struct App {
     apples: Vec<Vec2D>,
     last_move: f64,
     last_spawn: f64,
-    new_segments: usize
+    new_segments: usize,
+    score: usize
 }
 
 enum CollisionType {
@@ -59,6 +60,18 @@ enum CollisionType {
 }
 
 impl App {
+    fn new(opengl: glutin_window::OpenGL) -> App {
+        App {
+            gl: GlGraphics::new(opengl),
+            snake: Snake::new(Vec2D::new(250.0, 250.0), Vec2D::new(-1.0, 0.0)),
+            apples: Vec::new(),
+            last_move: 0.0,
+            last_spawn: 0.0,
+            new_segments: 0,
+            score: 0
+        }
+    }
+
     fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
 
@@ -156,7 +169,10 @@ impl App {
             let seg = self.calc_next_possition();
             let collision_type = self.check_collisions(&seg);
             match collision_type {
-                CollisionType::Apple => self.new_segments += SEGMENTS_PER_APPLE,
+                CollisionType::Apple => {
+                    self.new_segments += SEGMENTS_PER_APPLE;
+                    self.score += 1;
+                },
                 CollisionType::Snake => return true,
                 _ => ()
             }
@@ -195,14 +211,7 @@ fn main() {
         .unwrap();
 
     // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
-        snake: Snake::new(Vec2D::new(250.0, 250.0), Vec2D::new(-1.0, 0.0)),
-        apples: Vec::new(),
-        last_move: 0.0,
-        last_spawn: 0.0,
-        new_segments: 0
-    };
+    let mut app = App::new(opengl);
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
@@ -212,14 +221,16 @@ fn main() {
 
         if let Some(Button::Keyboard(btn)) = e.press_args() {
             match btn {
-                Key::Left => app.snake.dir.rotate(&Angle::from_deg(-10.0)),
-                Key::Right => app.snake.dir.rotate(&Angle::from_deg(10.0)),
+                Key::Left => app.snake.dir.rotate(&Angle::from_deg(-TURN_ANGLE)),
+                Key::Right => app.snake.dir.rotate(&Angle::from_deg(TURN_ANGLE)),
                 _ => ()
             }
         }
 
         if let Some(u) = e.update_args() {
             if app.update(&u) {
+                println!("GAME OVER !!!");
+                println!("Score: {:?}", app.score);
                 break;
             }
         }
