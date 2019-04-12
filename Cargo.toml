@@ -1,0 +1,12 @@
+[package]
+name = "omni_snake"
+version = "0.1.0"
+authors = ["Nikola Georgiev <nikola.georgiev@sirma.bg>"]
+edition = "2018"
+
+[dependencies]
+math2d = {git = "https://github.com/n0name/math2d"}
+piston = "*"
+piston2d-graphics = "*"
+pistoncore-glutin_window = "*"
+piston2d-opengl_graphics = "*"
