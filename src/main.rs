@@ -98,23 +98,12 @@ impl App {
 
         let segment_graphics = ellipse::Ellipse::new(GREEN);
         let apple_graphics = ellipse::Ellipse::new(RED);
-        let corner_graphics = rectangle::Rectangle::new(RED);
 
         let snake = &self.snake;
         let apples = &self.apples;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(BLACK, gl);
-            
-            let corners = vec!(
-                c.transform.trans(BOUNDS_X.0, BOUNDS_Y.0),
-                c.transform.trans(BOUNDS_X.1, BOUNDS_Y.0),
-                c.transform.trans(BOUNDS_X.1, BOUNDS_Y.1),
-                c.transform.trans(BOUNDS_X.0, BOUNDS_Y.1)
-            );
-            corners.iter().for_each(|tr|{
-                corner_graphics.draw([0.0, 0.0, 2.0, 2.0], &c.draw_state, *tr, gl);
-            });
 
             apples.iter().for_each(|a| {
                 let (x, y) = a.as_tuple();
