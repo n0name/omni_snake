@@ -133,23 +133,18 @@ impl App {
     }
 
     fn check_collisions(&mut self, head: &Vec2D) -> CollisionType {
-        let mut found_snake = false;
-
+        const SEGMENT_RAD_SQR: f64 = SEGMENT_RADIUS * SEGMENT_RADIUS;
         for s in self.snake.segments.iter() {
-            if s.distance(head) <= (SEGMENT_RADIUS) {
-                found_snake = true;
-                break;
+            if s.distance_sqr(head) <= (SEGMENT_RAD_SQR) {
+                return CollisionType::Snake;
             }
         }
 
-        if found_snake {
-            return CollisionType::Snake;
-        }
-
+        const APPLE_DIST_SQR: f64 = (SEGMENT_RADIUS + APPLE_RADIUS) * (SEGMENT_RADIUS + APPLE_RADIUS); 
         let mut found_apple = false;
         let mut to_remove = Vec::new();
         self.apples.iter().enumerate().for_each(|(i, a)| {
-            if a.distance(head) <= (SEGMENT_RADIUS + APPLE_RADIUS) {
+            if a.distance_sqr(head) <= APPLE_DIST_SQR {
                 found_apple = true;
                 to_remove.push(i);
             }
