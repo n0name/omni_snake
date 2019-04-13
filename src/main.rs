@@ -230,6 +230,21 @@ impl App {
         }
         return false;
     }
+
+    fn key_mapping(&self, key: Key) -> Option<usize> {
+        match key {
+            Key::Left => Some(ACTION_LEFT),
+            Key::Right => Some(ACTION_RIGHT),
+            Key::Space => Some(ACTION_TURBO),
+            _ => None
+        }
+    }
+
+    fn toggle_keystate(&mut self, key: Key, state: bool) {
+        if let Some(action) = self.key_mapping(key) {
+            self.keystate[action] = state;
+        }
+    }
     
 }
 
@@ -255,21 +270,11 @@ fn main() {
         }
 
         if let Some(Button::Keyboard(btn)) = e.press_args() {
-            match btn {
-                Key::Left => app.keystate[ACTION_LEFT] = true,
-                Key::Right => app.keystate[ACTION_RIGHT] = true,
-                Key::Space => app.keystate[ACTION_TURBO] = true,
-                _ => ()
-            }
+            app.toggle_keystate(btn, true);
         }
 
         if let Some(Button::Keyboard(btn)) = e.release_args() {
-            match btn {
-                Key::Left => app.keystate[ACTION_LEFT] = false,
-                Key::Right => app.keystate[ACTION_RIGHT] = false,
-                Key::Space => app.keystate[ACTION_TURBO] = false,
-                _ => ()
-            }
+            app.toggle_keystate(btn, false);
         }
 
 
