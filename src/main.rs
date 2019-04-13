@@ -27,10 +27,8 @@ const TURBO_TURN_RATE: f64 = 360.0;                 // [Deg / S]
 
 
 const WINDOW_SIZE: (u32, u32) = (1000, 1000);
-// const WALL_SIZE: (f64, f64) = (WINDOW_SIZE.0 as f64 * 0.22, WINDOW_SIZE.1 as f64 * 0.22);
-const WALL_SIZE: (f64, f64) = (1.0, 1.0);
-const BOUNDS_X: (f64, f64) = (WALL_SIZE.0, (WINDOW_SIZE.0 as f64) - WALL_SIZE.0);
-const BOUNDS_Y: (f64, f64) = (WALL_SIZE.1, (WINDOW_SIZE.1 as f64) - WALL_SIZE.1);
+const BOUNDS_X: (f64, f64) = (0.0, WINDOW_SIZE.0 as f64);
+const BOUNDS_Y: (f64, f64) = (0.0, WINDOW_SIZE.1 as f64);
 
 struct Snake {
     dir: Vec2D,
@@ -96,8 +94,10 @@ impl App {
         const RED:   [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
-        let segment_graphics = ellipse::Ellipse::new(GREEN);
-        let apple_graphics = ellipse::Ellipse::new(RED);
+        let segment_graphics = ellipse::Ellipse::new(GREEN)
+            .resolution(10);
+        let apple_graphics = ellipse::Ellipse::new(RED)
+            .resolution(10);
 
         let snake = &self.snake;
         let apples = &self.apples;
