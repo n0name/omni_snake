@@ -22,7 +22,7 @@ const APPLE_RADIUS: f64 = 5.0;              // [Pix]
 const UPDATE_TIME: f64 = 0.05;              // [S]
 const SPAWN_TIME: f64 = 5.0;                // [S]
 const SEGMENTS_PER_APPLE: usize = 10;       // [#]
-const TURN_ANGLE: f64 = 20.0;               // [Deg]
+const TURN_RATE: f64 = 180.0;               // [Deg / S]
 
 const WINDOW_SIZE: (u32, u32) = (1000, 1000);
 // const WALL_SIZE: (f64, f64) = (WINDOW_SIZE.0 as f64 * 0.22, WINDOW_SIZE.1 as f64 * 0.22);
@@ -56,7 +56,8 @@ pub struct App {
     last_move: f64,
     last_spawn: f64,
     new_segments: usize,
-    score: usize
+    score: usize,
+    left_right: (bool, bool)
 }
 
 enum CollisionType {
@@ -76,7 +77,8 @@ impl App {
             last_move: 0.0,
             last_spawn: 0.0,
             new_segments: 0,
-            score: 0
+            score: 0,
+            left_right: (false, false)
         }
     }
 
@@ -181,6 +183,12 @@ impl App {
 
     fn update(&mut self, args: &UpdateArgs) -> bool {
         // return false;
+        if self.left_right.0 {
+            self.snake.dir.rotate(&Angle::from_deg(-TURN_RATE * args.dt));
+        } else if self.left_right.1 {
+            self.snake.dir.rotate(&Angle::from_deg(TURN_RATE * args.dt));
+        }
+
         self.last_move -= args.dt;
         if self.last_move <= 0.0 {
             self.last_move = UPDATE_TIME;
@@ -232,17 +240,28 @@ fn main() {
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
+        // app.left_right = (false, false);
+
         if let Some(r) = e.render_args() {
             app.render(&r);
         }
 
         if let Some(Button::Keyboard(btn)) = e.press_args() {
             match btn {
-                Key::Left => app.snake.dir.rotate(&Angle::from_deg(-TURN_ANGLE)),
-                Key::Right => app.snake.dir.rotate(&Angle::from_deg(TURN_ANGLE)),
+                Key::Left => app.left_right.0 = true,
+                Key::Right => app.left_right.1 = true,
                 _ => ()
             }
         }
+
+        if let Some(Button::Keyboard(btn)) = e.release_args() {
+            match btn {
+                Key::Left => app.left_right.0 = false,
+                Key::Right => app.left_right.1 = false,
+                _ => ()
+            }
+        }
+
 
         if let Some(u) = e.update_args() {
             if app.update(&u) {
