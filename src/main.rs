@@ -9,10 +9,10 @@ use math2d::math::common::*;
 use math2d::math::vector::Vec2D;
 use math2d::math::angle::Angle;
 
-use piston::window::WindowSettings;
+use piston::window::{WindowSettings, Window};
 use piston::event_loop::*;
 use piston::input::*;
-use glutin_window::GlutinWindow as Window;
+use glutin_window::GlutinWindow;
 use opengl_graphics::{ GlGraphics, OpenGL };
 use std::collections::VecDeque;
 use rand::Rng;
@@ -22,7 +22,13 @@ const APPLE_RADIUS: f64 = 5.0;              // [Pix]
 const UPDATE_TIME: f64 = 0.05;              // [S]
 const SPAWN_TIME: f64 = 5.0;                // [S]
 const SEGMENTS_PER_APPLE: usize = 10;       // [#]
-const TURN_ANGLE: f64 = 15.0;               // [Deg]
+const TURN_ANGLE: f64 = 20.0;               // [Deg]
+
+const WINDOW_SIZE: (u32, u32) = (1000, 1000);
+// const WALL_SIZE: (f64, f64) = (WINDOW_SIZE.0 as f64 * 0.22, WINDOW_SIZE.1 as f64 * 0.22);
+const WALL_SIZE: (f64, f64) = (1.0, 1.0);
+const BOUNDS_X: (f64, f64) = (WALL_SIZE.0, (WINDOW_SIZE.0 as f64) - WALL_SIZE.0);
+const BOUNDS_Y: (f64, f64) = (WALL_SIZE.1, (WINDOW_SIZE.1 as f64) - WALL_SIZE.1);
 
 struct Snake {
     dir: Vec2D,
@@ -31,7 +37,7 @@ struct Snake {
 
 impl Snake {
     fn new(start_pos: Vec2D, start_dir: Vec2D) -> Snake {
-        let seg_separation = SEGMENT_RADIUS;
+        let seg_separation = SEGMENT_RADIUS * 2.0;
         let mut segments = VecDeque::new();
         segments.push_back(start_pos);
         segments.push_back(start_pos - start_dir * seg_separation);
@@ -63,7 +69,9 @@ impl App {
     fn new(opengl: glutin_window::OpenGL) -> App {
         App {
             gl: GlGraphics::new(opengl),
-            snake: Snake::new(Vec2D::new(250.0, 250.0), Vec2D::new(-1.0, 0.0)),
+            snake: Snake::new(
+                Vec2D::new(WINDOW_SIZE.0 as f64 / 2.0, WINDOW_SIZE.1 as f64 / 2.0), 
+                Vec2D::new(-1.0, 0.0)),
             apples: Vec::new(),
             last_move: 0.0,
             last_spawn: 0.0,
@@ -81,22 +89,36 @@ impl App {
 
         let segment_graphics = ellipse::Ellipse::new(GREEN);
         let apple_graphics = ellipse::Ellipse::new(RED);
+        let corner_graphics = rectangle::Rectangle::new(RED);
+
         let snake = &self.snake;
         let apples = &self.apples;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(BLACK, gl);
+            
+            let corners = vec!(
+                c.transform.trans(BOUNDS_X.0, BOUNDS_Y.0),
+                c.transform.trans(BOUNDS_X.1, BOUNDS_Y.0),
+                c.transform.trans(BOUNDS_X.1, BOUNDS_Y.1),
+                c.transform.trans(BOUNDS_X.0, BOUNDS_Y.1)
+            );
+            corners.iter().for_each(|tr|{
+                corner_graphics.draw([0.0, 0.0, 2.0, 2.0], &c.draw_state, *tr, gl);
+            });
 
             apples.iter().for_each(|a| {
                 let (x, y) = a.as_tuple();
-                let transform = c.transform.trans(x - 250.0, y - 250.0);
-                apple_graphics.draw(ellipse::circle(x, y, APPLE_RADIUS), &c.draw_state, transform, gl);
+                let transform = c.transform.trans(x, y)
+                    .trans(-APPLE_RADIUS, -APPLE_RADIUS);
+                apple_graphics.draw(ellipse::circle(APPLE_RADIUS, APPLE_RADIUS, APPLE_RADIUS), &c.draw_state, transform, gl);
             });
             
-            snake.segments.iter().for_each(|s|{
+            snake.segments.iter().enumerate().for_each(|(i, s)|{
                 let (x, y) = s.as_tuple();
-                let transform = c.transform.trans(x - 250.0, y - 250.0);
-                segment_graphics.draw(ellipse::circle(x, y, SEGMENT_RADIUS), &c.draw_state, transform, gl);
+                let rad = if i == 0 {SEGMENT_RADIUS + 1.0} else {SEGMENT_RADIUS};
+                let transform = c.transform.trans(x, y).trans(-rad, -rad);
+                segment_graphics.draw(ellipse::circle(rad, rad, rad), &c.draw_state, transform, gl);
             });
         });
     }
@@ -105,7 +127,7 @@ impl App {
         let mut found_snake = false;
 
         for s in self.snake.segments.iter() {
-            if s.distance(head) <= (SEGMENT_RADIUS / 2.0) {
+            if s.distance(head) <= (SEGMENT_RADIUS) {
                 found_snake = true;
                 break;
             }
@@ -137,32 +159,28 @@ impl App {
     fn calc_next_possition(&self) -> Vec2D {
         let dir = self.snake.dir;
         let head = self.snake.segments.front().unwrap();
-        let mut seg = *head + self.snake.dir * SEGMENT_RADIUS;
+        let mut seg = *head + self.snake.dir * SEGMENT_RADIUS * 2.0;
 
-        const LOWER_BOUND : f64 = 110.0;
-        const UPPER_BOUND : f64 = 390.0;
-
-        if seg.x - SEGMENT_RADIUS < LOWER_BOUND && dir.x < 0.0 {
-            seg.x = UPPER_BOUND - SEGMENT_RADIUS;
+        if seg.x - SEGMENT_RADIUS < BOUNDS_X.0 && dir.x < 0.0 {
+            seg.x = BOUNDS_X.1 - SEGMENT_RADIUS;
         }
-        if seg.x + SEGMENT_RADIUS >= UPPER_BOUND && dir.x > 0.0 {
-            seg.x = LOWER_BOUND + SEGMENT_RADIUS;
+        if seg.x + SEGMENT_RADIUS >= BOUNDS_X.1 && dir.x > 0.0 {
+            seg.x = BOUNDS_X.0 + SEGMENT_RADIUS;
         }
 
-        if seg.y - SEGMENT_RADIUS < LOWER_BOUND && dir.y < 0.0 {
-            seg.y = UPPER_BOUND - SEGMENT_RADIUS;
+        if seg.y - SEGMENT_RADIUS < BOUNDS_Y.0 && dir.y < 0.0 {
+            seg.y = BOUNDS_Y.1 - SEGMENT_RADIUS;
         }
 
-        if seg.y + SEGMENT_RADIUS >= UPPER_BOUND && dir.y > 0.0 {
-            seg.y = LOWER_BOUND + SEGMENT_RADIUS;
+        if seg.y + SEGMENT_RADIUS >= BOUNDS_Y.1 && dir.y > 0.0 {
+            seg.y = BOUNDS_Y.0 + SEGMENT_RADIUS;
         }
-
-        // println!("New Pos: {:?}", seg);
 
         return seg;
     }
 
     fn update(&mut self, args: &UpdateArgs) -> bool {
+        // return false;
         self.last_move -= args.dt;
         if self.last_move <= 0.0 {
             self.last_move = UPDATE_TIME;
@@ -188,8 +206,8 @@ impl App {
         if self.last_spawn <= 0.0 {
             self.last_spawn = SPAWN_TIME;
             let mut rng = rand::thread_rng();
-            let x = rng.gen_range(100.0, 400.0);
-            let y = rng.gen_range(100.0, 400.0);
+            let x = rng.gen_range(BOUNDS_X.0, BOUNDS_X.1);
+            let y = rng.gen_range(BOUNDS_Y.0, BOUNDS_Y.1);
             self.apples.push(Vec2D::new(x, y));
         }
         return false;
@@ -201,16 +219,15 @@ fn main() {
     let opengl = OpenGL::V4_5;
 
     // Create an Glutin window.
-    let mut window: Window = WindowSettings::new(
+    let mut window: GlutinWindow = WindowSettings::new(
             "Omni Snake",
-            [500, 500]
+            [WINDOW_SIZE.0, WINDOW_SIZE.1]
         )
         .opengl(opengl)
         .exit_on_esc(true)
         .build()
         .unwrap();
 
-    // Create a new game and run it.
     let mut app = App::new(opengl);
 
     let mut events = Events::new(EventSettings::new());
